@@ -129,6 +129,7 @@ def read_callback(cpu_index, address):
     cpus[cpu_index].read(address)
 
     synchronize_caches(cpus, cache_grids)
+    synchronize_ram(ram, ram_grid)
 
 
 def write_callback(cpu_index, address):

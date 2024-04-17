@@ -20,6 +20,10 @@ class RAM:
 
 
 class CacheController:
+    """Кэш контроллер использует MESI-протокол кэш когерентности
+    См. https://upload.wikimedia.org/wikipedia/commons/b/b6/MESI_State_Transaction_Diagram.svg
+    """
+
     def __init__(
         self, ram: RAM, cpus: List[CPU], cach_lines_count: int, cach_channels_count: int
     ):
@@ -29,28 +33,75 @@ class CacheController:
         self.cach_channels_count = cach_channels_count
 
         for cpu in cpus:
-            self.add_cpu(cpu)
+            self._add_cpu(cpu)
 
-    def add_cpu(self, cpu: CPU):
+    def _add_cpu(self, cpu: CPU):
+        """Подключет CPU к кэш контроллеру."""
         self.cpus.append(cpu)
         cpu.cache_controller = self
         cpu.cache = Cache(self.cach_lines_count, self.cach_channels_count)
 
-    def read(self, source_cpu: CPU, address: int):
-        # Сначала смотрим в кэше процессора
-        cach_line = source_cpu.cache.get_cache_line_by_address(address)
-        if cach_line is not None and cach_line.state != "I":
-            return cach_line.data
+    def _get_address_state(self, address: int):
+        """Ищет адрес во всех кэшах и возвращает его состояние,
+        либо None, если адреса в кэше нет."""
+        for cpu in self.cpus:
+            cach_line = cpu.cache.get_cache_line_by_address(address)
+            if cach_line is not None and cach_line.state != "I":
+                return cach_line.state
 
-        # Если копия данных уже есть в других кэшах, то состояние S
-        # Если ни в одном кэше нет таких данных, то состояние E
-        state = "E"
+        return None
 
+    def _make_address_shared(self, address: int):
+        """Ищет адрес во всех кэшах и присваивает ему состояние S."""
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
             if cach_line is not None and cach_line.state != "I":
                 cach_line.state = "S"
-                state = "S"
+
+    def _load_modified_address_to_ram(self, address: int):
+        """Ищет кэш строку с заданным адресом в состоянии M и выгружает в RAM,
+        состояние меняется на S."""
+        for cpu in self.cpus:
+            cach_line = cpu.cache.get_cache_line_by_address(address)
+            if cach_line is not None and cach_line.state == "M":
+                cach_line.state = "S"
+                self.ram.write(cach_line.data, cach_line.address)
+                return
+
+    def _make_address_invalid(self, address: int):
+        """Ищет адрес во всех кэшах и устанавливает в состоянии I"""
+        for cpu in self.cpus:
+            cach_line = cpu.cache.get_cache_line_by_address(address)
+            if cach_line is not None:
+                cach_line.state = "I"
+
+    def read(self, source_cpu: CPU, address: int):
+        """Обрабатывает запрос процессора на чтение данных по указанному адресу."""
+
+        # READ HIT - данные есть в кэшэ процессора, состояния никак не меняются
+        cach_line = source_cpu.cache.get_cache_line_by_address(address)
+        if cach_line is not None and cach_line.state != "I":
+            return cach_line.data
+
+        # READ MISS
+        address_state = self._get_address_state(address)
+        if address_state is None:
+            # Данных нет в других кэшах, а значит они не являются разделяемыми
+            state = "E"
+
+        elif address_state in {"S", "E"}:
+            # Данные есть в других кэшах
+            state = "S"
+
+            # В других кэшах адресс также должен стать shared
+            self._make_address_shared(address)
+
+        elif address_state == "M":
+            # Данные есть в других кэшах
+            state = "S"
+
+            # Выгружаем модифицированные данные в RAM
+            self._load_modified_address_to_ram(address)
 
         # Получаем сами данные из оперативки
         data = self.ram.read(address)
@@ -62,30 +113,32 @@ class CacheController:
         return data
 
     def write(self, source_cpu: CPU, data, address: int):
-        # Сначала смотрим в кэше процессора
+        """Обрабатывает запрос процессора на запись данных по указанному адресу."""
+        # WRITE HIT - данные есть в кэше процессора
         cach_line = source_cpu.cache.get_cache_line_by_address(address)
+        if cach_line is not None and cach_line.state != "I":
+            if cach_line.state == "M":
+                cach_line.data = data
 
-        if cach_line is not None:
-            # Обновляем кэш строку и данные в ней
-            cach_line.state = "E"
-            cach_line.data = data
+            elif cach_line.state == "E":
+                cach_line.state = "M"
+                cach_line.data = data
 
-            # Записываем данные в оперативку
-            self.ram.write(data, address)
+            elif cach_line.state == "S":
+                self._make_address_invalid(address)
 
-            # Обновляем статусы в других кэшах
-            for cpu in self.cpus:
-                if cpu is source_cpu:
-                    continue
+                cach_line.state = "M"
+                cach_line.data = data
 
-                cach_line = cpu.cache.get_cache_line_by_address(address)
-                if cach_line is not None:
-                    cach_line.state = "I"
-        else:
-            # Вариант, когда данных в кэше процессора нет, пока не рассматриваем.
-            # Вообще-то он нам и не нужен, так как мы всегда делаем инкремент,
-            # т. е. читаем данные (сохраняем в кэш) и увеличиваем на единицу
-            pass
+            return
+
+        # WRITE MISS
+
+        # Вариант, когда данных в кэше процессора нет, пока не рассматриваем.
+        # Вообще-то он нам и не нужен, так как мы всегда делаем инкремент,
+        # т. е. читаем данные (сохраняем в кэш) и увеличиваем на единицу
+
+        raise NotImplementedError
 
 
 class CPU:
