@@ -20,8 +20,8 @@ class RAM:
 
 
 class CacheController:
-    """Кэш контроллер использует MESI-протокол кэш когерентности
-    См. https://upload.wikimedia.org/wikipedia/commons/b/b6/MESI_State_Transaction_Diagram.svg
+    """Кэш контроллер использует RTMESI-протокол кэш когерентности
+    См. https://upload.wikimedia.org/wikipedia/commons/4/4a/RT-MESI_Protocol_-_State_Transaction_Diagram.svg
     """
 
     def __init__(
@@ -41,15 +41,17 @@ class CacheController:
         cpu.cache_controller = self
         cpu.cache = Cache(self.cach_lines_count, self.cach_channels_count)
 
-    def _get_address_state(self, address: int):
-        """Ищет адрес во всех кэшах и возвращает его состояние,
-        либо None, если адреса в кэше нет."""
+    def _get_address_states(self, address: int):
+        """Ищет адрес во всех кэшах и возвращает список его состояний.
+        Может быть пустым, если адреса нет в кэшах. Состояние I игнорируется."""
+        address_states = []
+
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
             if cach_line is not None and cach_line.state != "I":
-                return cach_line.state
+                address_states.append(cach_line.state)
 
-        return None
+        return address_states
 
     def _make_address_shared(self, address: int):
         """Ищет адрес во всех кэшах и присваивает ему состояние S."""
@@ -58,15 +60,23 @@ class CacheController:
             if cach_line is not None and cach_line.state != "I":
                 cach_line.state = "S"
 
-    def _load_modified_address_to_ram(self, address: int):
-        """Ищет кэш строку с заданным адресом в состоянии M и выгружает в RAM,
-        состояние меняется на S."""
+    def _get_data_from_m_or_t(self, address: int):
+        """Ищет кэш строку с заданным адресом в состоянии M или T и возвращает лежащие
+        в ней данные. Меняет состояние на S."""
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
-            if cach_line is not None and cach_line.state == "M":
+            if cach_line is not None and cach_line.state in {"M", "T"}:
                 cach_line.state = "S"
-                self.ram.write(cach_line.data, cach_line.address)
-                return
+                return cach_line.data
+
+    def _get_data_from_e_or_r(self, address: int):
+        """Ищет кэш строку с заданным адресом в состоянии E или R и возвращает лежащие
+        в ней данные. Меняет состояние на S."""
+        for cpu in self.cpus:
+            cach_line = cpu.cache.get_cache_line_by_address(address)
+            if cach_line is not None and cach_line.state in {"E", "R"}:
+                cach_line.state = "S"
+                return cach_line.data
 
     def _make_address_invalid(self, address: int):
         """Ищет адрес во всех кэшах и устанавливает в состоянии I"""
@@ -78,33 +88,40 @@ class CacheController:
     def read(self, source_cpu: CPU, address: int):
         """Обрабатывает запрос процессора на чтение данных по указанному адресу."""
 
-        # READ HIT - данные есть в кэшэ процессора, состояния никак не меняются
+        # READ HIT - данные есть в кэше процессора, состояния никак не меняются
         cach_line = source_cpu.cache.get_cache_line_by_address(address)
         if cach_line is not None and cach_line.state != "I":
             return cach_line.data
 
         # READ MISS
-        address_state = self._get_address_state(address)
-        if address_state is None:
+        address_states = self._get_address_states(address)
+        if not address_states:
             # Данных нет в других кэшах, а значит они не являются разделяемыми
             state = "E"
 
-        elif address_state in {"S", "E"}:
+            # Берём данные из оперативной памяти
+            data = self.ram.read(address)
+
+        elif "M" in address_states or "T" in address_states:
             # Данные есть в других кэшах
-            state = "S"
+            state = "T"
 
-            # В других кэшах адресс также должен стать shared
-            self._make_address_shared(address)
+            # Dirty Intervention
+            data = self._get_data_from_m_or_t(address)
 
-        elif address_state == "M":
+        elif "E" in address_states or "R" in address_states:
             # Данные есть в других кэшах
-            state = "S"
+            state = "R"
 
-            # Выгружаем модифицированные данные в RAM
-            self._load_modified_address_to_ram(address)
+            # Shared Intervention
+            data = self._get_data_from_e_or_r(address)
 
-        # Получаем сами данные из оперативки
-        data = self.ram.read(address)
+        elif "S" in address_states:
+            # Данные есть в других кэшах только в состоянии S
+            state = "R"
+
+            # Берём данные из оперативной памяти
+            data = self.ram.read(address)
 
         # Записываем в кэш процессора
         source_cpu.cache.write(state, data, address)
@@ -114,21 +131,20 @@ class CacheController:
 
     def write(self, source_cpu: CPU, data, address: int):
         """Обрабатывает запрос процессора на запись данных по указанному адресу."""
+
         # WRITE HIT - данные есть в кэше процессора
         cach_line = source_cpu.cache.get_cache_line_by_address(address)
+
         if cach_line is not None and cach_line.state != "I":
-            if cach_line.state == "M":
-                cach_line.data = data
-
-            elif cach_line.state == "E":
+            if cach_line.state in {"M", "E"}:
                 cach_line.state = "M"
                 cach_line.data = data
 
-            elif cach_line.state == "S":
+            elif cach_line.state in {"T", "R", "S"}:
+                cach_line.state = "M"
+                cach_line.data = data
+
                 self._make_address_invalid(address)
-
-                cach_line.state = "M"
-                cach_line.data = data
 
             return
 
