@@ -1,4 +1,5 @@
 from __future__ import annotations
+from copy import copy
 from typing import List
 
 
@@ -91,7 +92,7 @@ class CacheController:
         # READ HIT - данные есть в кэше процессора, состояния никак не меняются
         cache_line = source_cpu.cache.get_cache_line_by_address(address)
         if cache_line is not None and cache_line.state != "I":
-            return cache_line.data
+            return cache_line.read()
 
         # READ MISS
         address_states = self._get_address_states(address)
@@ -124,14 +125,11 @@ class CacheController:
             data = self.ram.read(address)
 
         # Записываем в кэш процессора
-        cache_line_to_rewrite = source_cpu.cache.choose_line(address)
+        replaced_cache_line = source_cpu.cache.write(state, data, address)
 
-        if cache_line_to_rewrite.state in {"T", "M"}:
+        if replaced_cache_line is not None and replaced_cache_line.state in {"T", "M"}:
             # Copy-Back
-            self.ram.write(cache_line_to_rewrite.data, cache_line_to_rewrite.address)
-
-        cache_line_to_rewrite.state = state
-        cache_line_to_rewrite.write(address, data)
+            self.ram.write(replaced_cache_line.data, replaced_cache_line.address)
 
         # Возвращаем запрашиваемые данные процессору
         return data
@@ -145,13 +143,13 @@ class CacheController:
         if cach_line is not None and cach_line.state != "I":
             if cach_line.state in {"M", "E"}:
                 cach_line.state = "M"
-                cach_line.data = data
+                cach_line.write(address, data)
 
             elif cach_line.state in {"T", "R", "S"}:
                 self._make_address_invalid(address)
 
                 cach_line.state = "M"
-                cach_line.data = data
+                cach_line.write(address, data)
 
             return
 
@@ -192,11 +190,17 @@ class CacheLine:
         self.state = None
         self.data = None
         self.address = None
+        self.not_used_counter = 0
+
+    def increment_counter(self):
+        self.not_used_counter += 1
 
     def read(self):
+        self.not_used_counter = 0
         return self.data
 
     def write(self, address, data):
+        self.not_used_counter = 0
         self.address = address
         self.data = data
 
@@ -205,36 +209,69 @@ class Cache:
     def __init__(self, lines_count=2, channels_count=2):
         self.lines_count = lines_count
         self.channels_count = channels_count
+
         self.channels = [
             [CacheLine() for _ in range(lines_count)] for _ in range(channels_count)
         ]
 
+    def _cache_lines_counter_increment(self):
+        for channel in self.channels:
+            for cache_line in channel:
+                cache_line.increment_counter()
 
     def read(self, address: int):
+        self._cache_lines_counter_increment()
         cache_line = self.get_cache_line_by_address(address)
-        return cache_line.data
+        return cache_line.read()
 
-    def write(self, state, data, address: int):
-        cache_line = self.choose_line(address)
+    def write(self, state, data, address: int) -> None | CacheLine:
+        """Записывает в кэш данные с указанным адресом и состоянием. Возвращает
+        замещённую кэш строку, либо None, если не пришлось делать замещение."""
+        self._cache_lines_counter_increment()
+
+        cache_line = self._choose_same_or_empty_line(address)
+        replaced_cache_line = None
+
+        if cache_line is None:
+            cache_line = self._choose_line_to_replace(address)
+            replaced_cache_line = copy(cache_line)
+
         cache_line.state = state
         cache_line.write(address, data)
 
-    def choose_line(self, address: int) -> CacheLine:
-        """Место для логики политики замещения"""
+        return replaced_cache_line
+
+    def _choose_same_or_empty_line(self, address: int):
+        """Возвращает кэш строку с указанным адресом, либо подбирает пустую или Invalid
+        строку, если такого адреса в кэше нет. Если пустых строк нет, возвращает None.
+        """
         line_index = address % self.lines_count
 
-        # Если есть пустые строки - заполняем сначала их
-        # Если эти этот адрес уже есть в кэше, то работаем с ним
         for channel in self.channels:
             cache_line = channel[line_index]
 
-            if cache_line.data is None or cache_line.address == address:
+            if (
+                cache_line.data is None
+                or cache_line.state == "I"
+                or cache_line.address == address
+            ):
                 return cache_line
 
-        # Тут уже придётся решать, какие данные замещать
-        cache_line = self.channels[0][line_index]
+        return None
 
-        return cache_line
+    def _choose_line_to_replace(self, address: int) -> CacheLine:
+        """Место для логики политики замещения. Сейчас это MRU."""
+        line_index = address % self.lines_count
+        choosen_line = self.channels[0][line_index]
+
+        for channel in self.channels:
+            cache_line = channel[line_index]
+
+            # MRU - выбираем строку, которая использовалась "наиболее недавно"
+            if cache_line.not_used_counter < choosen_line.not_used_counter:
+                choosen_line = cache_line
+
+        return choosen_line
 
     def get_cache_line_by_address(self, address: int) -> CacheLine:
         line_index = address % self.lines_count
