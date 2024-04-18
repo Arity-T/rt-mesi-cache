@@ -1,5 +1,5 @@
 
-![RT-MESI Protocol – State Transaction Diagram](https://en.wikipedia.org/wiki/File:RT-MESI_Protocol_-_State_Transaction_Diagram.svg)
+![RT-MESI Protocol – State Transaction Diagram](imgs/state_digram.svg)
 
 ## Наш вариант
 
