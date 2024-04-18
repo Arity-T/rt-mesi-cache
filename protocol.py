@@ -89,9 +89,9 @@ class CacheController:
         """Обрабатывает запрос процессора на чтение данных по указанному адресу."""
 
         # READ HIT - данные есть в кэше процессора, состояния никак не меняются
-        cach_line = source_cpu.cache.get_cache_line_by_address(address)
-        if cach_line is not None and cach_line.state != "I":
-            return cach_line.data
+        cache_line = source_cpu.cache.get_cache_line_by_address(address)
+        if cache_line is not None and cache_line.state != "I":
+            return cache_line.data
 
         # READ MISS
         address_states = self._get_address_states(address)
@@ -124,7 +124,14 @@ class CacheController:
             data = self.ram.read(address)
 
         # Записываем в кэш процессора
-        source_cpu.cache.write(state, data, address)
+        cache_line_to_rewrite = source_cpu.cache.choose_line(address)
+
+        if cache_line_to_rewrite.state in {"T", "M"}:
+            # Copy-Back
+            self.ram.write(cache_line_to_rewrite.data, cache_line_to_rewrite.address)
+
+        cache_line_to_rewrite.state = state
+        cache_line_to_rewrite.write(address, data)
 
         # Возвращаем запрашиваемые данные процессору
         return data
@@ -141,10 +148,10 @@ class CacheController:
                 cach_line.data = data
 
             elif cach_line.state in {"T", "R", "S"}:
+                self._make_address_invalid(address)
+
                 cach_line.state = "M"
                 cach_line.data = data
-
-                self._make_address_invalid(address)
 
             return
 
