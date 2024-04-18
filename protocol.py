@@ -209,19 +209,6 @@ class Cache:
             [CacheLine() for _ in range(lines_count)] for _ in range(channels_count)
         ]
 
-    def __repr__(self) -> str:
-        str_repr = ""
-
-        for i, channel in enumerate(self.channels):
-            str_repr += f"Channel #{i}\n"
-            str_repr += "State\tAddress\tData\n"
-            for cache_line in channel:
-                str_repr += (
-                    f"{cache_line.state}\t{cache_line.address}\t{cache_line.data}\n"
-                )
-            str_repr += "\n"
-
-        return str_repr
 
     def read(self, address: int):
         cache_line = self.get_cache_line_by_address(address)
