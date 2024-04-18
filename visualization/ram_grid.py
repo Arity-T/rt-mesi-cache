@@ -1,3 +1,9 @@
+"""Визуализация оперативной памяти.
+
+Демо:
+python ram_grid.py
+"""
+
 import tkinter as tk
 
 

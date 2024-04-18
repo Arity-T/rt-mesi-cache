@@ -1,3 +1,9 @@
+"""Визуализация кэша процессора.
+
+Демо:
+python cache_grid.py
+"""
+
 import tkinter as tk
 
 

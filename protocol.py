@@ -1,3 +1,6 @@
+"""Файл со всеми логическими компонентами системы. Тут и RT-MESI, и политика замещения,
+и сама логика взаимодействия всех компонентов."""
+
 from __future__ import annotations
 from copy import copy
 from typing import List
@@ -7,12 +10,6 @@ class RAM:
     def __init__(self, size=16):
         self.data = [0] * size
 
-    def __repr__(self):
-        str_repr = "Address\tData\n"
-        for i, byte in enumerate(self.data):
-            str_repr += f"{i}\t{byte}\n"
-        return str_repr
-
     def read(self, address: int):
         return self.data[address]
 
@@ -21,8 +18,10 @@ class RAM:
 
 
 class CacheController:
-    """Кэш контроллер использует RTMESI-протокол кэш когерентности
-    См. https://upload.wikimedia.org/wikipedia/commons/4/4a/RT-MESI_Protocol_-_State_Transaction_Diagram.svg
+    """Кэш контроллер это самый главный элемент в системе, её главное связующее звено.
+    Он принимает запросы на чтение и запись от процессоров, работает с кэшами
+    и оперативной памятью. Как раз в нём и реализуется логика RT-MESI протокола.
+    См. https://en.wikipedia.org/wiki/Cache_coherency_protocols_(examples)#RT-MESI_protocol
     """
 
     def __init__(
@@ -86,7 +85,7 @@ class CacheController:
             if cach_line is not None:
                 cach_line.state = "I"
 
-    def read(self, source_cpu: CPU, address: int):
+    def read(self, source_cpu: CPU, address: int) -> int:
         """Обрабатывает запрос процессора на чтение данных по указанному адресу."""
 
         # READ HIT - данные есть в кэше процессора, состояния никак не меняются
@@ -163,17 +162,11 @@ class CacheController:
 
 
 class CPU:
-    def __init__(self, name):
-        self.name = name
+    def __init__(self):
         self.cache_controller: CacheController = None
         self.cache: Cache = None
 
-    def __repr__(self) -> str:
-        str_repr = f"Cache for {self.name} -------- \n\n"
-        str_repr += str(self.cache)
-        return str_repr
-
-    def read(self, address: int):
+    def read(self, address: int) -> int:
         return self.cache_controller.read(self, address)
 
     def write(self, data, address: int):
@@ -186,27 +179,37 @@ class CPU:
 
 
 class CacheLine:
+    """Кэш строка - содержит состояние (одно из R, T, M, E, S или I), данные, адрес
+    данных в оперативной памяти, а также счётчик, который показывает, как давно было
+    последний запрос на чтение или запись к этой кэш строке."""
+
     def __init__(self):
-        self.state = None
-        self.data = None
-        self.address = None
+        self.state: None | str = None
+        self.data: None | int = None
+        self.address: None | int = None
         self.not_used_counter = 0
 
     def increment_counter(self):
+        """Увеличивает счётчик. Функция должна вызываться, когда поступает запрос
+        на чтение или запись к другим кэш строкам того же кэша."""
         self.not_used_counter += 1
 
-    def read(self):
+    def read(self) -> None | int:
+        """Получает данные из кэш строки и обнуляет счётчик."""
         self.not_used_counter = 0
         return self.data
 
     def write(self, address, data):
+        """Записывает данные в кэш строку и обнуляет счётчик."""
         self.not_used_counter = 0
         self.address = address
         self.data = data
 
 
 class Cache:
-    def __init__(self, lines_count=2, channels_count=2):
+    """Наборно-ассоциативный кэш процессора. В нём реализована политика замещения MRU."""
+
+    def __init__(self, lines_count: int, channels_count: int):
         self.lines_count = lines_count
         self.channels_count = channels_count
 
@@ -219,29 +222,7 @@ class Cache:
             for cache_line in channel:
                 cache_line.increment_counter()
 
-    def read(self, address: int):
-        self._cache_lines_counter_increment()
-        cache_line = self.get_cache_line_by_address(address)
-        return cache_line.read()
-
-    def write(self, state, data, address: int) -> None | CacheLine:
-        """Записывает в кэш данные с указанным адресом и состоянием. Возвращает
-        замещённую кэш строку, либо None, если не пришлось делать замещение."""
-        self._cache_lines_counter_increment()
-
-        cache_line = self._choose_same_or_empty_line(address)
-        replaced_cache_line = None
-
-        if cache_line is None:
-            cache_line = self._choose_line_to_replace(address)
-            replaced_cache_line = copy(cache_line)
-
-        cache_line.state = state
-        cache_line.write(address, data)
-
-        return replaced_cache_line
-
-    def _choose_same_or_empty_line(self, address: int):
+    def _choose_same_or_empty_line(self, address: int) -> None | CacheLine:
         """Возвращает кэш строку с указанным адресом, либо подбирает пустую или Invalid
         строку, если такого адреса в кэше нет. Если пустых строк нет, возвращает None.
         """
@@ -273,7 +254,32 @@ class Cache:
 
         return choosen_line
 
-    def get_cache_line_by_address(self, address: int) -> CacheLine:
+    def read(self, address: int) -> int:
+        """Обрабатывае запрос на чтение адреса из кэша. Подразумевается, что при вызове
+        этой функции точно известно, что данные в кэше есть."""
+        self._cache_lines_counter_increment()
+        cache_line = self.get_cache_line_by_address(address)
+        return cache_line.read()
+
+    def write(self, state, data, address: int) -> None | CacheLine:
+        """Записывает в кэш данные с указанным адресом и состоянием. Возвращает
+        замещённую кэш строку, либо None, если не пришлось делать замещение."""
+        self._cache_lines_counter_increment()
+
+        cache_line = self._choose_same_or_empty_line(address)
+        replaced_cache_line = None
+
+        if cache_line is None:
+            cache_line = self._choose_line_to_replace(address)
+            replaced_cache_line = copy(cache_line)
+
+        cache_line.state = state
+        cache_line.write(address, data)
+
+        return replaced_cache_line
+
+    def get_cache_line_by_address(self, address: int) -> None | CacheLine:
+        """Находит кэш строку по заданному адресу. Возвращает None, если адреса в кэше нет."""
         line_index = address % self.lines_count
 
         for channel in self.channels:

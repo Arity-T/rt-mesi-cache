@@ -1,3 +1,9 @@
+"""Визуализация шин (HorizontalArrow) и переходов (VerticalArrow).
+
+Демо:
+python arrows.py
+"""
+
 import tkinter as tk
 from enum import Enum
 
@@ -172,7 +178,7 @@ class HorizontalArrow:
 
 
 if __name__ == "__main__":
-    # Пример использования:
+    # Пример использования
     root = tk.Tk()
     root.title("Examples of VerticalArrow")
 
@@ -191,7 +197,7 @@ if __name__ == "__main__":
         HorizontalArrow(canvas, "SHARED", 80, 450, 240, Color.PINK),
     ]
 
-    def animate():
+    def loop_animation():
         for arrow in vertical_arrows:
             root.after(0, arrow.reset)
             root.after(1000, arrow.run_arrow_up)
@@ -202,8 +208,8 @@ if __name__ == "__main__":
             root.after(1000 * (i + 1), arrow.activate)
             root.after(1000 * (i + 3), arrow.reset)
 
-        root.after(8000, animate)
+        root.after(8000, loop_animation)
 
-    animate()
+    loop_animation()
 
     root.mainloop()
