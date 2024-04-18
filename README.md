@@ -24,6 +24,12 @@ https://en.wikipedia.org/wiki/Cache_coherency_protocols_(examples)#RT-MESI_proto
  - Эталон:  
   https://www.scss.tcd.ie/Jeremy.Jones/vivio/caches/MESIHelp.htm
 
+## Запуск
+Из корня проекта
+```cmd
+python app.py
+```
+
 ## Сборка
 Предварительно устанавливаем [auto-py-to-exe](https://github.com/brentvollebregt/auto-py-to-exe)
 ```cmd
