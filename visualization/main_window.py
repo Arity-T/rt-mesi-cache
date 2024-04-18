@@ -2,10 +2,11 @@ import tkinter as tk
 from typing import List
 
 import settings
-from arrows import Color, HorizontalArrow
-from cache_grid import CacheGrid
-from cpu_buttons import CPUButtons
-from ram_grid import RAMGrid
+
+from .arrows import Color, HorizontalArrow
+from .cache_grid import CacheGrid
+from .cpu_buttons import CPUButtons
+from .ram_grid import RAMGrid
 
 
 class MainWindow:

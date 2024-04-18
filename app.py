@@ -4,11 +4,10 @@ from functools import partial
 from typing import List
 
 import settings
-from cache_grid import CacheGrid
 from protocol import CPU, RAM, CacheController
-from ram_grid import RAMGrid
-from visualization import MainWindow
-
+from visualization.cache_grid import CacheGrid
+from visualization.main_window import MainWindow
+from visualization.ram_grid import RAMGrid
 
 mw = MainWindow()
 
