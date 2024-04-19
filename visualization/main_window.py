@@ -32,7 +32,7 @@ class MainWindow:
             self.canvas,
             "DATA BUS",
             x=settings.TOP_LEFT_CORNER[0],
-            y=settings.TOP_LEFT_CORNER[1] + 30,
+            y=settings.BUSES_Y_COORDS[0],
             length=settings.BUS_LENGTH,
             active_color=Color.RED,
         )
@@ -40,7 +40,7 @@ class MainWindow:
             self.canvas,
             "ADDRESS BUS",
             x=settings.TOP_LEFT_CORNER[0],
-            y=settings.TOP_LEFT_CORNER[1] + 80,
+            y=settings.BUSES_Y_COORDS[1],
             length=settings.BUS_LENGTH,
             active_color=Color.BLUE,
         )
@@ -48,7 +48,7 @@ class MainWindow:
             self.canvas,
             "SHARED",
             x=settings.TOP_LEFT_CORNER[0],
-            y=settings.TOP_LEFT_CORNER[1] + 130,
+            y=settings.BUSES_Y_COORDS[2],
             length=settings.BUS_LENGTH,
             active_color=Color.PINK,
         )
@@ -76,6 +76,35 @@ class MainWindow:
         self.cpu_to_cache_write_buses: List[VerticalArrow] = []
 
         for cpu_index in range(settings.CPU_COUNT):
+            self.cache_to_address_buses.append(
+                VerticalArrow(
+                    self.canvas,
+                    x=settings.CPU_X_COORDS[cpu_index] + 105,
+                    y=settings.BUSES_Y_COORDS[0] + 5,
+                    length=settings.CPU_Y_COORD - settings.BUSES_Y_COORDS[0] - 5,
+                    active_color=Color.PINK,
+                )
+            )
+
+            self.cache_to_address_buses.append(
+                VerticalArrow(
+                    self.canvas,
+                    x=settings.CPU_X_COORDS[cpu_index] + 63,
+                    y=settings.BUSES_Y_COORDS[1] + 5,
+                    length=settings.CPU_Y_COORD - settings.BUSES_Y_COORDS[1] - 5,
+                    active_color=Color.PINK,
+                )
+            )
+            self.cache_to_shared_buses.append(
+                VerticalArrow(
+                    self.canvas,
+                    x=settings.CPU_X_COORDS[cpu_index] + 31,
+                    y=settings.BUSES_Y_COORDS[2] + 5,
+                    length=settings.CPU_Y_COORD - settings.BUSES_Y_COORDS[2] - 5,
+                    active_color=Color.PINK,
+                )
+            )
+
             self.cache_grids.append(
                 CacheGrid(
                     self.root,
