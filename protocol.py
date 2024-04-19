@@ -48,7 +48,7 @@ class CacheController:
 
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
-            if cach_line is not None and cach_line.state != "I":
+            if cach_line is not None:
                 address_states.append(cach_line.state)
 
         return address_states
@@ -57,7 +57,7 @@ class CacheController:
         """Ищет адрес во всех кэшах и присваивает ему состояние S."""
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
-            if cach_line is not None and cach_line.state != "I":
+            if cach_line is not None:
                 cach_line.state = "S"
 
     def _get_data_from_m_or_t(self, address: int):
@@ -90,7 +90,7 @@ class CacheController:
 
         # READ HIT - данные есть в кэше процессора, состояния никак не меняются
         cache_line = source_cpu.cache.get_cache_line_by_address(address)
-        if cache_line is not None and cache_line.state != "I":
+        if cache_line is not None:
             return cache_line.read()
 
         # READ MISS
@@ -139,7 +139,7 @@ class CacheController:
         # WRITE HIT - данные есть в кэше процессора
         cach_line = source_cpu.cache.get_cache_line_by_address(address)
 
-        if cach_line is not None and cach_line.state != "I":
+        if cach_line is not None:
             if cach_line.state in {"M", "E"}:
                 cach_line.state = "M"
                 cach_line.write(address, data)
@@ -279,13 +279,14 @@ class Cache:
         return replaced_cache_line
 
     def get_cache_line_by_address(self, address: int) -> None | CacheLine:
-        """Находит кэш строку по заданному адресу. Возвращает None, если адреса в кэше нет."""
+        """Находит кэш строку по заданному адресу. Возвращает None, если адреса
+        в кэше нет или он находится в состоянии I."""
         line_index = address % self.lines_count
 
         for channel in self.channels:
             cache_line = channel[line_index]
 
-            if address == cache_line.address:
+            if cache_line.state != "I" and address == cache_line.address:
                 return cache_line
 
         return None
