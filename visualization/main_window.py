@@ -3,7 +3,7 @@ from typing import List
 
 import settings
 
-from .arrows import Color, HorizontalArrow
+from .arrows import Color, HorizontalArrow, VerticalArrow
 from .cache_grid import CacheGrid
 from .cpu_buttons import CPUButtons
 from .ram_grid import RAMGrid
@@ -68,6 +68,13 @@ class MainWindow:
         self.cache_grids: List[CacheGrid] = []
         self.cpu_btns: List[CPUButtons] = []
 
+        self.cache_to_data_buses: List[VerticalArrow] = []
+        self.cache_to_address_buses: List[VerticalArrow] = []
+        self.cache_to_shared_buses: List[VerticalArrow] = []
+
+        self.cpu_to_cache_read_buses: List[VerticalArrow] = []
+        self.cpu_to_cache_write_buses: List[VerticalArrow] = []
+
         for cpu_index in range(settings.CPU_COUNT):
             self.cache_grids.append(
                 CacheGrid(
@@ -82,12 +89,34 @@ class MainWindow:
                 )
             )
 
+            self.cpu_to_cache_read_buses.append(
+                VerticalArrow(
+                    self.canvas,
+                    x=settings.CPU_X_COORDS[cpu_index] + 63,
+                    y=settings.CPU_Y_COORD + self.cache_grids[-1].height,
+                    length=settings.CPU_TO_CACHE_BUSES_LENGTH,
+                    active_color=Color.BLUE,
+                )
+            )
+
+            self.cpu_to_cache_write_buses.append(
+                VerticalArrow(
+                    self.canvas,
+                    x=settings.CPU_X_COORDS[cpu_index] + 105,
+                    y=settings.CPU_Y_COORD + self.cache_grids[-1].height,
+                    length=settings.CPU_TO_CACHE_BUSES_LENGTH,
+                    active_color=Color.BLUE,
+                )
+            )
+
             self.cpu_btns.append(
                 CPUButtons(
                     self.root,
                     f"CPU {cpu_index}",
                     x=settings.CPU_X_COORDS[cpu_index],
-                    y=settings.CPU_Y_COORD + self.cache_grids[-1].height + 50,
+                    y=settings.CPU_Y_COORD
+                    + self.cache_grids[-1].height
+                    + settings.CPU_TO_CACHE_BUSES_LENGTH,
                     rows=16,
                 )
             )

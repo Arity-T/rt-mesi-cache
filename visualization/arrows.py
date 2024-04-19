@@ -33,6 +33,8 @@ class VerticalArrow:
         self.active_color = active_color
         self.default_color = default_color
 
+        self.arrowshape = (15, 15, 5)
+
         self.arrow = self.canvas.create_line(
             self.x,
             self.y + self.length,
@@ -40,8 +42,8 @@ class VerticalArrow:
             self.y,
             arrow=tk.BOTH,
             fill="#%02x%02x%02x" % self.default_color.value,
-            width=10,
-            arrowshape=(20, 20, 10),
+            width=8,
+            arrowshape=self.arrowshape,
         )
         self.animation_arrow = self.canvas.create_line(
             self.x,
@@ -50,8 +52,8 @@ class VerticalArrow:
             self.y + self.length,
             arrow=tk.LAST,
             fill="#%02x%02x%02x" % self.active_color.value,
-            width=10,
-            arrowshape=(20, 20, 10),
+            width=8,
+            arrowshape=self.arrowshape,
         )
 
     def reset(self):
