@@ -7,6 +7,8 @@ python arrows.py
 import tkinter as tk
 from enum import Enum
 
+import settings
+
 
 class Color(Enum):
     BACKGROUND = (240, 240, 240)
@@ -105,7 +107,9 @@ class VerticalArrow:
             self._fade_arrow(percentage)
 
             if percentage < 1:
-                self.canvas.after(15, lambda: animate(percentage + 0.01))
+                self.canvas.after(
+                    20, lambda: animate(percentage + settings.ARROW_ANIMATION_STEP)
+                )
 
         animate(0)
 
@@ -126,7 +130,9 @@ class VerticalArrow:
             self._fade_arrow(percentage)
 
             if percentage < 1:
-                self.canvas.after(15, lambda: animate(percentage + 0.01))
+                self.canvas.after(
+                    20, lambda: animate(percentage + settings.ARROW_ANIMATION_STEP)
+                )
 
         animate(0)
 

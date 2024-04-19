@@ -150,7 +150,7 @@ class MainWindow:
                     x=settings.CPU_X_COORDS[cpu_index] + 105,
                     y=settings.CPU_Y_COORD + self.cache_grids[-1].height,
                     length=settings.CPU_TO_CACHE_BUSES_LENGTH,
-                    active_color=Color.BLUE,
+                    active_color=Color.RED,
                 )
             )
 
