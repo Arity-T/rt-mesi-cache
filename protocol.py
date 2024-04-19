@@ -79,7 +79,7 @@ class CacheController:
                 return cach_line.data
 
     def _make_address_invalid(self, address: int):
-        """Ищет адрес во всех кэшах и устанавливает в состоянии I"""
+        """Ищет адрес во всех кэшах и устанавливает в состояниe I."""
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
             if cach_line is not None:
@@ -91,7 +91,7 @@ class CacheController:
         # READ HIT - данные есть в кэше процессора, состояния никак не меняются
         cache_line = source_cpu.cache.get_cache_line_by_address(address)
         if cache_line is not None:
-            return cache_line.read()
+            return source_cpu.cache.read(address)
 
         # READ MISS
         address_states = self._get_address_states(address)
@@ -141,14 +141,12 @@ class CacheController:
 
         if cach_line is not None:
             if cach_line.state in {"M", "E"}:
-                cach_line.state = "M"
-                cach_line.write(address, data)
+                source_cpu.cache.write("M", data, address)
 
             elif cach_line.state in {"T", "R", "S"}:
                 self._make_address_invalid(address)
 
-                cach_line.state = "M"
-                cach_line.write(address, data)
+                source_cpu.cache.write("M", data, address)
 
             return
 

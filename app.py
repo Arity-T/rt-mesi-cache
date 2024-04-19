@@ -32,6 +32,7 @@ def synchronize_caches(cpus: List[CPU], cache_grids: List[CacheGrid]):
                         state=cach_line.state,
                         address=cach_line.address,
                         data=cach_line.data,
+                        policy_counter=cach_line.not_used_counter,
                     )
 
 
