@@ -2,6 +2,7 @@
 
 from functools import partial
 from typing import List
+from collections import deque
 
 import settings
 from protocol import CPU, RAM, CacheController
@@ -40,24 +41,40 @@ def synchronize_ram(ram: RAM, ram_grid: RAMGrid):
         ram_grid.write(value=v, address=i)
 
 
-def read_callback(cpu_index: int, address: int):
-    """Функция вызывается, когда пользователь нажимает на кнопку чтения."""
-    print(f"READ: {cpu_index = }, {address = }")
+# Обрабатываем пользовательский ввод
+task_queue = deque()
+tick_counter = 0
 
-    cpus[cpu_index].read(address)
+
+def tick():
+    global tick_counter
+    tick_counter += 1
+
+    while task_queue:
+        operation_type, cpu_index, address = task_queue.popleft()
+
+        if operation_type == "R":
+            print(f"READ: {cpu_index = }, {address = }")
+            cpus[cpu_index].read(address)
+
+        elif operation_type == "W":
+            print(f"WRITE: {cpu_index = }, {address = }")
+            cpus[cpu_index].increment(address)
 
     synchronize_caches(cpus, mw.cache_grids)
     synchronize_ram(ram, mw.ram_grid)
+
+    mw.root.after(settings.TICK_MS, tick)
+
+
+def read_callback(cpu_index: int, address: int):
+    """Функция вызывается, когда пользователь нажимает на кнопку чтения."""
+    task_queue.append(("R", cpu_index, address))
 
 
 def write_callback(cpu_index: int, address: int):
     """Функция вызывается, когда пользователь нажимает на кнопку записи."""
-    print(f"WRITE: {cpu_index = }, {address = }")
-
-    cpus[cpu_index].increment(address)
-
-    synchronize_caches(cpus, mw.cache_grids)
-    synchronize_ram(ram, mw.ram_grid)
+    task_queue.append(("W", cpu_index, address))
 
 
 # Привязываем нажатие на кнопки к колбэкам
@@ -66,4 +83,5 @@ for cpu_index, cpu_btn in enumerate(mw.cpu_btns):
     cpu_btn.write_callback = partial(write_callback, cpu_index)
 
 # Запускаем приложение
+mw.root.after(settings.TICK_MS, tick)
 mw.mainloop()
