@@ -173,14 +173,22 @@ class CacheController:
 
 
 class CPU:
-    def __init__(self):
+    def __init__(
+        self,
+        read_callback=lambda: print("CPU READ"),
+        write_callback=lambda: print("CPU WRITE"),
+    ):
+        self.read_callback = read_callback
+        self.write_callback = write_callback
         self.cache_controller: CacheController = None
         self.cache: Cache = None
 
     def read(self, address: int) -> int:
+        self.read_callback()
         return self.cache_controller.read(self, address)
 
     def write(self, data, address: int):
+        self.write_callback()
         self.cache_controller.write(self, data, address)
 
     def increment(self, address):

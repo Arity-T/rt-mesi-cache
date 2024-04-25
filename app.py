@@ -14,6 +14,15 @@ mw = MainWindow()
 
 
 # Инициализируем систему
+def cpu_read_callback(cpu_index):
+    mw.cpu_to_cache_read_buses[cpu_index].run_arrow_up()
+
+
+def cpu_write_callback(cpu_index):
+    mw.cpu_to_cache_read_buses[cpu_index].run_arrow_up()
+    mw.cpu_to_cache_write_buses[cpu_index].run_arrow_up()
+
+
 def ram_read_callback():
     mw.ram_to_address_bus.run_arrow_down()
     mw.ram_to_data_bus.run_arrow_up()
@@ -29,7 +38,13 @@ ram = RAM(
     read_callback=ram_read_callback,
     write_callback=ram_write_callback,
 )
-cpus = [CPU() for _ in range(settings.CPU_COUNT)]
+cpus = [
+    CPU(
+        read_callback=partial(cpu_read_callback, cpu_index),
+        write_callback=partial(cpu_write_callback, cpu_index),
+    )
+    for cpu_index in range(settings.CPU_COUNT)
+]
 cache_controller = CacheController(
     ram, cpus, settings.CACH_CACHLINES_COUNT, settings.CACH_CHANNELS_COUNT
 )
@@ -83,13 +98,6 @@ def tick():
         operation_type, cpu_index, address = task_queue.popleft()
 
         if operation_type == "R":
-            mw.cpu_to_cache_read_buses[cpu_index].run_arrow_up()
-
-            if cpus[cpu_index].cache.get_cache_line_by_address(address=address):
-                mw.cpu_to_cache_write_buses[cpu_index].run_arrow_down()
-            else:
-                mw.address_bus.activate()
-
             print(f"READ: {cpu_index = }, {address = }")
             cpus[cpu_index].read(address)
 
@@ -105,11 +113,13 @@ def tick():
 
 def read_callback(cpu_index: int, address: int):
     """Функция вызывается, когда пользователь нажимает на кнопку чтения."""
+    mw.reset_buses()
     task_queue.append(("R", cpu_index, address))
 
 
 def write_callback(cpu_index: int, address: int):
     """Функция вызывается, когда пользователь нажимает на кнопку записи."""
+    mw.reset_buses()
     task_queue.append(("W", cpu_index, address))
 
 
