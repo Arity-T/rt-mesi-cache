@@ -41,6 +41,19 @@ def ram_write_callback():
     mw.ram_to_data_bus.run_arrow_down()
 
 
+def read_miss_callback():
+    mw.address_bus.activate()
+    mw.data_bus.activate()
+
+
+def intervention_callback():
+    mw.shared_bus.activate()
+
+
+def invalidate_callback():
+    mw.shared_bus.activate()
+
+
 ram = RAM(
     size=settings.RAM_SIZE,
     read_callback=ram_read_callback,
@@ -63,7 +76,13 @@ for cpu_index in range(settings.CPU_COUNT):
     cpus.append(cpu)
 
 cache_controller = CacheController(
-    ram, cpus, settings.CACH_CACHLINES_COUNT, settings.CACH_CHANNELS_COUNT
+    ram,
+    cpus,
+    settings.CACH_CACHLINES_COUNT,
+    settings.CACH_CHANNELS_COUNT,
+    read_miss_callback,
+    intervention_callback,
+    invalidate_callback,
 )
 
 

@@ -38,12 +38,22 @@ class CacheController:
     """
 
     def __init__(
-        self, ram: RAM, cpus: List[CPU], cach_lines_count: int, cach_channels_count: int
+        self,
+        ram: RAM,
+        cpus: List[CPU],
+        cach_lines_count: int,
+        cach_channels_count: int,
+        read_miss_callback=lambda: print("READ MISS"),
+        intervention_callback=lambda: print("INTERVENTION"),
+        invalidate_callback=lambda: print("INVALIDATE"),
     ):
         self.ram = ram
         self.cpus: List[CPU] = []
         self.cach_lines_count = cach_lines_count
         self.cach_channels_count = cach_channels_count
+        self.read_miss_callback = read_miss_callback
+        self.intervention_callback = intervention_callback
+        self.invalidate_callback = invalidate_callback
 
         for cpu in cpus:
             self._add_cpu(cpu)
@@ -94,6 +104,8 @@ class CacheController:
 
     def _make_address_invalid(self, address: int):
         """Ищет адрес во всех кэшах и устанавливает в состояниe I."""
+        self.invalidate_callback()
+
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
             if cach_line is not None:
@@ -108,6 +120,7 @@ class CacheController:
             return source_cpu.cache.read(address)
 
         # READ MISS
+        self.read_miss_callback()
         address_states = self._get_address_states(address)
         if not address_states:
             # Данных нет в других кэшах, а значит они не являются разделяемыми
@@ -121,6 +134,7 @@ class CacheController:
             state = "T"
 
             # Dirty Intervention
+            self.intervention_callback()
             data = self._get_data_from_m_or_t(address)
 
         elif "E" in address_states or "R" in address_states:
@@ -128,6 +142,7 @@ class CacheController:
             state = "R"
 
             # Shared Intervention
+            self.intervention_callback()
             data = self._get_data_from_e_or_r(address)
 
         elif "S" in address_states:
