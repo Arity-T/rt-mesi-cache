@@ -25,7 +25,7 @@ class CPUButtons:
             pady = (0, 3) if i == self.rows - 1 else 0
             read_button = tk.Button(
                 self.frame,
-                text=f"read a{i}",
+                text=f"read #{i}",
                 width=10,
                 command=lambda i=i: self.read_callback(i),
             )
@@ -33,7 +33,7 @@ class CPUButtons:
 
             write_button = tk.Button(
                 self.frame,
-                text=f"write a{i}",
+                text=f"write #{i}",
                 width=10,
                 command=lambda i=i: self.write_callback(i),
             )
