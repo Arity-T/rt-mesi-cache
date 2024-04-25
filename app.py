@@ -43,12 +43,11 @@ def synchronize_ram(ram: RAM, ram_grid: RAMGrid):
 
 
 def reset():
-    for cache_grid, cpu in zip(mw.cache_grids, cpus):
+    for cpu in cpus:
         cpu.cache.reset()
-        cache_grid.reset()
-
     ram.reset()
-    synchronize_ram(ram, mw.ram_grid)
+
+    mw.reset()
 
 
 mw.set_reset_callback(reset)

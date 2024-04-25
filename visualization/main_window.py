@@ -20,9 +20,9 @@ class MainWindow:
         )
         self.canvas.pack()
 
-        self.draw_buses()
-        self.draw_ram()
-        self.draw_cpus()
+        self._draw_buses()
+        self._draw_ram()
+        self._draw_cpus()
 
         self.reset_btn = tk.Button(
             self.root,
@@ -41,7 +41,29 @@ class MainWindow:
     def mainloop(self):
         self.root.mainloop()
 
-    def draw_buses(self):
+    def reset_buses(self):
+        self.data_bus.reset()
+        self.address_bus.reset()
+        self.shared_bus.reset()
+        self.ram_to_address_bus.reset()
+        self.ram_to_data_bus.reset()
+
+        for cpu_index in range(settings.CPU_COUNT):
+            self.cache_to_address_buses[cpu_index].reset()
+            self.cache_to_data_buses[cpu_index].reset()
+            self.cache_to_shared_buses[cpu_index].reset()
+
+            self.cpu_to_cache_read_buses[cpu_index].reset()
+            self.cpu_to_cache_write_buses[cpu_index].reset()
+
+    def reset(self):
+        self.reset_buses()
+        self.ram_grid.reset()
+
+        for cpu_index in range(settings.CPU_COUNT):
+            self.cache_grids[cpu_index].reset()
+
+    def _draw_buses(self):
         self.data_bus = HorizontalArrow(
             self.canvas,
             "DATA BUS",
@@ -67,7 +89,7 @@ class MainWindow:
             active_color=Color.PINK,
         )
 
-    def draw_ram(self):
+    def _draw_ram(self):
         self.ram_to_data_bus = VerticalArrow(
             self.canvas,
             x=settings.BOTTOM_RIGHT_CORNER[0] - 162,
@@ -94,7 +116,7 @@ class MainWindow:
             size=settings.RAM_SIZE,
         )
 
-    def draw_cpus(self):
+    def _draw_cpus(self):
         self.cache_grids: List[CacheGrid] = []
         self.cpu_btns: List[CPUButtons] = []
 
@@ -106,7 +128,7 @@ class MainWindow:
         self.cpu_to_cache_write_buses: List[VerticalArrow] = []
 
         for cpu_index in range(settings.CPU_COUNT):
-            self.cache_to_address_buses.append(
+            self.cache_to_data_buses.append(
                 VerticalArrow(
                     self.canvas,
                     x=settings.CPU_X_COORDS[cpu_index] + 105,
