@@ -64,6 +64,8 @@ def tick():
     tick_counter += 1
 
     while task_queue:
+        mw.address_bus.reset()
+
         operation_type, cpu_index, address = task_queue.popleft()
 
         if operation_type == "R":
@@ -71,6 +73,8 @@ def tick():
 
             if cpus[cpu_index].cache.get_cache_line_by_address(address=address):
                 mw.cpu_to_cache_write_buses[cpu_index].run_arrow_down()
+            else:
+                mw.address_bus.activate()
 
             print(f"READ: {cpu_index = }, {address = }")
             cpus[cpu_index].read(address)
