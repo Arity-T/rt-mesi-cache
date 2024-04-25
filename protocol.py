@@ -52,7 +52,8 @@ class CacheController:
         """Подключет CPU к кэш контроллеру."""
         self.cpus.append(cpu)
         cpu.cache_controller = self
-        cpu.cache = Cache(self.cach_lines_count, self.cach_channels_count)
+        if cpu.cache is None:
+            cpu.cache = Cache(self.cach_lines_count, self.cach_channels_count)
 
     def _get_address_states(self, address: int):
         """Ищет адрес во всех кэшах и возвращает список его состояний.
@@ -228,9 +229,17 @@ class CacheLine:
 class Cache:
     """Наборно-ассоциативный кэш процессора. В нём реализована политика замещения MRU."""
 
-    def __init__(self, lines_count: int, channels_count: int):
+    def __init__(
+        self,
+        lines_count: int,
+        channels_count: int,
+        read_callback=lambda: print("CACHE READ"),
+        write_callback=lambda: print("CACHE WRITE"),
+    ):
         self.lines_count = lines_count
         self.channels_count = channels_count
+        self.read_callback = read_callback
+        self.write_callback = write_callback
 
         self.reset()
 
@@ -280,6 +289,8 @@ class Cache:
     def read(self, address: int) -> int:
         """Обрабатывае запрос на чтение адреса из кэша. Подразумевается, что при вызове
         этой функции точно известно, что данные в кэше есть."""
+        self.read_callback()
+
         self._cache_lines_counter_increment()
         cache_line = self.get_cache_line_by_address(address)
         return cache_line.read()
@@ -287,6 +298,8 @@ class Cache:
     def write(self, state, data, address: int) -> None | CacheLine:
         """Записывает в кэш данные с указанным адресом и состоянием. Возвращает
         замещённую кэш строку, либо None, если не пришлось делать замещение."""
+        self.write_callback()
+
         self._cache_lines_counter_increment()
 
         cache_line = self._choose_same_or_empty_line(address)

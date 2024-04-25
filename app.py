@@ -5,7 +5,7 @@ from typing import List
 from collections import deque
 
 import settings
-from protocol import CPU, RAM, CacheController
+from protocol import CPU, RAM, Cache, CacheController
 from visualization.cache_grid import CacheGrid
 from visualization.main_window import MainWindow
 from visualization.ram_grid import RAMGrid
@@ -23,6 +23,14 @@ def cpu_write_callback(cpu_index):
     mw.cpu_to_cache_write_buses[cpu_index].run_arrow_up()
 
 
+def cache_read_callback(cpu_index):
+    mw.cpu_to_cache_write_buses[cpu_index].run_arrow_down()
+
+
+def cache_write_callback(cpu_index):
+    pass
+
+
 def ram_read_callback():
     mw.ram_to_address_bus.run_arrow_down()
     mw.ram_to_data_bus.run_arrow_up()
@@ -38,13 +46,22 @@ ram = RAM(
     read_callback=ram_read_callback,
     write_callback=ram_write_callback,
 )
-cpus = [
-    CPU(
+
+cpus = []
+
+for cpu_index in range(settings.CPU_COUNT):
+    cpu = CPU(
         read_callback=partial(cpu_read_callback, cpu_index),
         write_callback=partial(cpu_write_callback, cpu_index),
     )
-    for cpu_index in range(settings.CPU_COUNT)
-]
+    cpu.cache = Cache(
+        settings.CACH_CACHLINES_COUNT,
+        settings.CACH_CHANNELS_COUNT,
+        partial(cache_read_callback, cpu_index),
+        partial(cache_write_callback, cpu_index),
+    )
+    cpus.append(cpu)
+
 cache_controller = CacheController(
     ram, cpus, settings.CACH_CACHLINES_COUNT, settings.CACH_CHANNELS_COUNT
 )
