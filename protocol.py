@@ -7,17 +7,26 @@ from typing import List
 
 
 class RAM:
-    def __init__(self, size=16):
+    def __init__(
+        self,
+        size,
+        read_callback=lambda: print("RAM READ"),
+        write_callback=lambda: print("RAM WRITE"),
+    ):
         self.size = size
+        self.read_callback = read_callback
+        self.write_callback = write_callback
         self.reset()
 
     def reset(self):
         self.data = [0] * self.size
 
     def read(self, address: int):
+        self.read_callback()
         return self.data[address]
 
     def write(self, data, address: int):
+        self.write_callback()
         self.data[address] = data
 
 

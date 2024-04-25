@@ -12,8 +12,23 @@ from visualization.ram_grid import RAMGrid
 
 mw = MainWindow()
 
+
 # Инициализируем систему
-ram = RAM(size=settings.RAM_SIZE)
+def ram_read_callback():
+    mw.ram_to_address_bus.run_arrow_down()
+    mw.ram_to_data_bus.run_arrow_up()
+
+
+def ram_write_callback():
+    mw.ram_to_address_bus.run_arrow_down()
+    mw.ram_to_data_bus.run_arrow_down()
+
+
+ram = RAM(
+    size=settings.RAM_SIZE,
+    read_callback=ram_read_callback,
+    write_callback=ram_write_callback,
+)
 cpus = [CPU() for _ in range(settings.CPU_COUNT)]
 cache_controller = CacheController(
     ram, cpus, settings.CACH_CACHLINES_COUNT, settings.CACH_CHANNELS_COUNT

@@ -95,7 +95,7 @@ class MainWindow:
             x=settings.BOTTOM_RIGHT_CORNER[0] - 162,
             y=settings.BUSES_Y_COORDS[0] + 5,
             length=settings.RAM_Y_COORD - settings.BUSES_Y_COORDS[0] - 5,
-            active_color=Color.PINK,
+            active_color=Color.RED,
         )
 
         self.ram_to_address_bus = VerticalArrow(
@@ -103,7 +103,7 @@ class MainWindow:
             x=settings.BOTTOM_RIGHT_CORNER[0] - 260,
             y=settings.BUSES_Y_COORDS[1] + 5,
             length=settings.RAM_Y_COORD - settings.BUSES_Y_COORDS[1] - 5,
-            active_color=Color.PINK,
+            active_color=Color.BLUE,
         )
 
         self.ram_grid = RAMGrid(
