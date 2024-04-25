@@ -42,6 +42,18 @@ def synchronize_ram(ram: RAM, ram_grid: RAMGrid):
         ram_grid.write(value=v, address=i)
 
 
+def reset():
+    for cache_grid, cpu in zip(mw.cache_grids, cpus):
+        cpu.cache.reset()
+        cache_grid.reset()
+
+    ram.reset()
+    synchronize_ram(ram, mw.ram_grid)
+
+
+mw.set_reset_callback(reset)
+
+
 # Обрабатываем пользовательский ввод
 task_queue = deque()
 tick_counter = 0
@@ -67,8 +79,8 @@ def tick():
             print(f"WRITE: {cpu_index = }, {address = }")
             cpus[cpu_index].increment(address)
 
-    synchronize_caches(cpus, mw.cache_grids)
-    synchronize_ram(ram, mw.ram_grid)
+        synchronize_caches(cpus, mw.cache_grids)
+        synchronize_ram(ram, mw.ram_grid)
 
     mw.root.after(settings.TICK_MS, tick)
 

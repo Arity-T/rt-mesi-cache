@@ -8,7 +8,11 @@ from typing import List
 
 class RAM:
     def __init__(self, size=16):
-        self.data = [0] * size
+        self.size = size
+        self.reset()
+
+    def reset(self):
+        self.data = [0] * self.size
 
     def read(self, address: int):
         return self.data[address]
@@ -211,8 +215,12 @@ class Cache:
         self.lines_count = lines_count
         self.channels_count = channels_count
 
+        self.reset()
+
+    def reset(self):
         self.channels = [
-            [CacheLine() for _ in range(lines_count)] for _ in range(channels_count)
+            [CacheLine() for _ in range(self.lines_count)]
+            for _ in range(self.channels_count)
         ]
 
     def _cache_lines_counter_increment(self):

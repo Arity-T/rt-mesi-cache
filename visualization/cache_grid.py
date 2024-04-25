@@ -55,10 +55,11 @@ class CacheGrid:
         self.frame.columnconfigure(4, weight=6)
 
     def reset(self):
-        for state_label, address_label, data_label in self.labels:
+        for state_label, address_label, data_label, counter_label in self.labels:
             state_label.config(text=self.default_state)
             address_label.config(text=self.default_empty)
             data_label.config(text=self.default_empty)
+            counter_label.config(text=self.default_empty)
 
     def update_cache_line(
         self, channel_index, cache_line_index, state, address, data, policy_counter

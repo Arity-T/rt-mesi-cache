@@ -24,6 +24,20 @@ class MainWindow:
         self.draw_ram()
         self.draw_cpus()
 
+        self.reset_btn = tk.Button(
+            self.root,
+            text="Reset",
+            width=27,
+            command=lambda: print("hello"),
+        )
+        self.reset_btn.place(
+            x=settings.BOTTOM_RIGHT_CORNER[0] - 300,
+            y=settings.BOTTOM_RIGHT_CORNER[1] - 85,
+        )
+
+    def set_reset_callback(self, callback):
+        self.reset_btn.config(command=callback)
+
     def mainloop(self):
         self.root.mainloop()
 
