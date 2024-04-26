@@ -44,7 +44,7 @@ class CacheController:
         cach_lines_count: int,
         cach_channels_count: int,
         read_miss_callback=lambda cpu_index: print(f"READ MISS {cpu_index}"),
-        intervention_callback=lambda: print("INTERVENTION"),
+        intervention_callback=lambda cpu_index: print(f"INTERVENTION {cpu_index}"),
         invalidate_callback=lambda cpu_index: print(f"INVALIDATE {cpu_index}"),
     ):
         self.ram = ram
@@ -132,7 +132,7 @@ class CacheController:
             state = "T"
 
             # Dirty Intervention
-            self.intervention_callback()
+            self.intervention_callback(source_cpu.index)
             data = self._get_data_from_m_or_t(address)
 
         elif "E" in address_states or "R" in address_states:
@@ -140,7 +140,7 @@ class CacheController:
             state = "R"
 
             # Shared Intervention
-            self.intervention_callback()
+            self.intervention_callback(source_cpu.index)
             data = self._get_data_from_e_or_r(address)
 
         elif "S" in address_states:

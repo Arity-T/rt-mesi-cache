@@ -49,8 +49,13 @@ def read_miss_callback(cpu_index):
     mw.cache_to_data_buses[cpu_index].run_arrow_down()
 
 
-def intervention_callback():
+def intervention_callback(cpu_index):
     mw.shared_bus.activate()
+    for i, bus in enumerate(mw.cache_to_shared_buses):
+        if i == cpu_index:
+            bus.run_arrow_up()
+        else:
+            bus.run_arrow_down()
 
 
 def invalidate_callback(cpu_index):
