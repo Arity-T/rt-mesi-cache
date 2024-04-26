@@ -15,6 +15,7 @@ mw = MainWindow()
 
 # Инициализируем систему
 def cpu_read_callback(cpu_index):
+    mw.cpu_to_cache_write_buses[cpu_index].run_arrow_down()
     mw.cpu_to_cache_read_buses[cpu_index].run_arrow_up()
 
 
@@ -24,7 +25,7 @@ def cpu_write_callback(cpu_index):
 
 
 def cache_read_callback(cpu_index):
-    mw.cpu_to_cache_write_buses[cpu_index].run_arrow_down()
+    pass
 
 
 def cache_write_callback(cpu_index):
@@ -41,17 +42,24 @@ def ram_write_callback():
     mw.ram_to_data_bus.run_arrow_down()
 
 
-def read_miss_callback():
+def read_miss_callback(cpu_index):
     mw.address_bus.activate()
     mw.data_bus.activate()
+    mw.cache_to_address_buses[cpu_index].run_arrow_up()
+    mw.cache_to_data_buses[cpu_index].run_arrow_down()
 
 
 def intervention_callback():
     mw.shared_bus.activate()
 
 
-def invalidate_callback():
+def invalidate_callback(cpu_index):
     mw.shared_bus.activate()
+    for i, bus in enumerate(mw.cache_to_shared_buses):
+        if i == cpu_index:
+            bus.run_arrow_up()
+        else:
+            bus.run_arrow_down()
 
 
 ram = RAM(
@@ -64,6 +72,7 @@ cpus = []
 
 for cpu_index in range(settings.CPU_COUNT):
     cpu = CPU(
+        index=cpu_index,
         read_callback=partial(cpu_read_callback, cpu_index),
         write_callback=partial(cpu_write_callback, cpu_index),
     )

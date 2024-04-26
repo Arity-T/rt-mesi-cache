@@ -43,9 +43,9 @@ class CacheController:
         cpus: List[CPU],
         cach_lines_count: int,
         cach_channels_count: int,
-        read_miss_callback=lambda: print("READ MISS"),
+        read_miss_callback=lambda cpu_index: print(f"READ MISS {cpu_index}"),
         intervention_callback=lambda: print("INTERVENTION"),
-        invalidate_callback=lambda: print("INVALIDATE"),
+        invalidate_callback=lambda cpu_index: print(f"INVALIDATE {cpu_index}"),
     ):
         self.ram = ram
         self.cpus: List[CPU] = []
@@ -104,8 +104,6 @@ class CacheController:
 
     def _make_address_invalid(self, address: int):
         """Ищет адрес во всех кэшах и устанавливает в состояниe I."""
-        self.invalidate_callback()
-
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
             if cach_line is not None:
@@ -120,7 +118,7 @@ class CacheController:
             return source_cpu.cache.read(address)
 
         # READ MISS
-        self.read_miss_callback()
+        self.read_miss_callback(source_cpu.index)
         address_states = self._get_address_states(address)
         if not address_states:
             # Данных нет в других кэшах, а значит они не являются разделяемыми
@@ -173,6 +171,7 @@ class CacheController:
                 source_cpu.cache.write("M", data, address)
 
             elif cach_line.state in {"T", "R", "S"}:
+                self.invalidate_callback(source_cpu.index)
                 self._make_address_invalid(address)
 
                 source_cpu.cache.write("M", data, address)
@@ -191,9 +190,11 @@ class CacheController:
 class CPU:
     def __init__(
         self,
+        index,
         read_callback=lambda: print("CPU READ"),
         write_callback=lambda: print("CPU WRITE"),
     ):
+        self.index = index
         self.read_callback = read_callback
         self.write_callback = write_callback
         self.cache_controller: CacheController = None

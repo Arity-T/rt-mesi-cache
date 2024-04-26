@@ -134,7 +134,7 @@ class MainWindow:
                     x=settings.CPU_X_COORDS[cpu_index] + 105,
                     y=settings.BUSES_Y_COORDS[0] + 5,
                     length=settings.CPU_Y_COORD - settings.BUSES_Y_COORDS[0] - 5,
-                    active_color=Color.PINK,
+                    active_color=Color.RED,
                 )
             )
 
@@ -144,7 +144,7 @@ class MainWindow:
                     x=settings.CPU_X_COORDS[cpu_index] + 63,
                     y=settings.BUSES_Y_COORDS[1] + 5,
                     length=settings.CPU_Y_COORD - settings.BUSES_Y_COORDS[1] - 5,
-                    active_color=Color.PINK,
+                    active_color=Color.BLUE,
                 )
             )
             self.cache_to_shared_buses.append(
