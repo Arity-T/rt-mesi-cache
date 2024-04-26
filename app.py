@@ -58,7 +58,7 @@ def intervention_callback(cpu_index):
             bus.run_arrow_down()
 
 
-def invalidate_callback(cpu_index):
+def state_callback(cpu_index):
     mw.shared_bus.activate()
     for i, bus in enumerate(mw.cache_to_shared_buses):
         if i == cpu_index:
@@ -96,7 +96,7 @@ cache_controller = CacheController(
     settings.CACH_CHANNELS_COUNT,
     read_miss_callback,
     intervention_callback,
-    invalidate_callback,
+    state_callback,
 )
 
 

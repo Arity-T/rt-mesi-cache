@@ -45,7 +45,7 @@ class CacheController:
         cach_channels_count: int,
         read_miss_callback=lambda cpu_index: print(f"READ MISS {cpu_index}"),
         intervention_callback=lambda cpu_index: print(f"INTERVENTION {cpu_index}"),
-        invalidate_callback=lambda cpu_index: print(f"INVALIDATE {cpu_index}"),
+        state_callback=lambda cpu_index: print(f"CHANGE STATES {cpu_index}"),
     ):
         self.ram = ram
         self.cpus: List[CPU] = []
@@ -53,7 +53,7 @@ class CacheController:
         self.cach_channels_count = cach_channels_count
         self.read_miss_callback = read_miss_callback
         self.intervention_callback = intervention_callback
-        self.invalidate_callback = invalidate_callback
+        self.state_callback = state_callback
 
         for cpu in cpus:
             self._add_cpu(cpu)
@@ -132,7 +132,7 @@ class CacheController:
             state = "T"
 
             # Dirty Intervention
-            self.intervention_callback(source_cpu.index)
+            self.state_callback(source_cpu.index)
             data = self._get_data_from_m_or_t(address)
 
         elif "E" in address_states or "R" in address_states:
@@ -140,7 +140,7 @@ class CacheController:
             state = "R"
 
             # Shared Intervention
-            self.intervention_callback(source_cpu.index)
+            self.state_callback(source_cpu.index)
             data = self._get_data_from_e_or_r(address)
 
         elif "S" in address_states:
@@ -171,7 +171,7 @@ class CacheController:
                 source_cpu.cache.write("M", data, address)
 
             elif cach_line.state in {"T", "R", "S"}:
-                self.invalidate_callback(source_cpu.index)
+                self.state_callback(source_cpu.index)
                 self._make_address_invalid(address)
 
                 source_cpu.cache.write("M", data, address)
