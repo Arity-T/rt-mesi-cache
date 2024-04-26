@@ -90,6 +90,7 @@ class CacheController:
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
             if cach_line is not None and cach_line.state in {"M", "T"}:
+                self.intervention_callback(cpu.index)
                 cach_line.state = "S"
                 return cach_line.data
 
@@ -99,6 +100,7 @@ class CacheController:
         for cpu in self.cpus:
             cach_line = cpu.cache.get_cache_line_by_address(address)
             if cach_line is not None and cach_line.state in {"E", "R"}:
+                self.intervention_callback(cpu.index)
                 cach_line.state = "S"
                 return cach_line.data
 

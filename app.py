@@ -44,18 +44,19 @@ def ram_write_callback():
 
 def read_miss_callback(cpu_index):
     mw.address_bus.activate()
-    mw.data_bus.activate()
-    mw.cache_to_address_buses[cpu_index].run_arrow_up()
-    mw.cache_to_data_buses[cpu_index].run_arrow_down()
-
-
-def intervention_callback(cpu_index):
-    mw.shared_bus.activate()
-    for i, bus in enumerate(mw.cache_to_shared_buses):
+    for i, bus in enumerate(mw.cache_to_address_buses):
         if i == cpu_index:
             bus.run_arrow_up()
         else:
             bus.run_arrow_down()
+
+    mw.data_bus.activate()
+    mw.cache_to_data_buses[cpu_index].run_arrow_down()
+
+
+def intervention_callback(cpu_index):
+    mw.data_bus.activate()
+    mw.cache_to_data_buses[cpu_index].run_arrow_up()
 
 
 def state_callback(cpu_index):
