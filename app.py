@@ -107,11 +107,12 @@ def synchronize_caches(cpus: List[CPU], cache_grids: List[CacheGrid]):
         for channel_index, channel in enumerate(cpus[cpu_index].cache.channels):
             for cach_line_index, cach_line in enumerate(channel):
                 if cach_line.state is not None:
+                    address_to_bin = int(bin(cach_line.address)[2:])
                     cache_grids[cpu_index].update_cache_line(
                         channel_index=channel_index,
                         cache_line_index=cach_line_index,
                         state=cach_line.state,
-                        address=cach_line.address,
+                        address=address_to_bin,
                         data=cach_line.data,
                         policy_counter=cach_line.not_used_counter,
                     )

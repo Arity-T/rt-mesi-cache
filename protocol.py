@@ -278,8 +278,7 @@ class Cache:
         """
         line_index = address % self.lines_count
 
-        for channel in self.channels:
-            cache_line = channel[line_index]
+        for cache_line in self.channels[line_index]:
 
             if (
                 cache_line.data is None
@@ -295,8 +294,7 @@ class Cache:
         line_index = address % self.lines_count
         choosen_line = self.channels[0][line_index]
 
-        for channel in self.channels:
-            cache_line = channel[line_index]
+        for cache_line in self.channels[line_index]:
 
             # MRU - выбираем строку, которая использовалась "наиболее недавно"
             if cache_line.not_used_counter < choosen_line.not_used_counter:
@@ -337,8 +335,7 @@ class Cache:
         в кэше нет или он находится в состоянии I."""
         line_index = address % self.lines_count
 
-        for channel in self.channels:
-            cache_line = channel[line_index]
+        for cache_line in self.channels[line_index]:
 
             if cache_line.state != "I" and address == cache_line.address:
                 return cache_line
