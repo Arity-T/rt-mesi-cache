@@ -8,6 +8,7 @@ from .cache_grid import CacheGrid
 from .cpu_buttons import CPUButtons
 from .ram_grid import RAMGrid
 
+activation_counter = 0
 
 class MainWindow:
     def __init__(self):
@@ -19,6 +20,9 @@ class MainWindow:
             self.root, width=settings.WINDOW_SIZE[0], height=settings.WINDOW_SIZE[1]
         )
         self.canvas.pack()
+
+        self.counter_label = tk.Label(self.root, text="BUS CYCLES: 0")
+        self.counter_label.place(x=1350, y=45)  # Указываем координаты для размещения
 
         self._draw_buses()
         self._draw_ram()
@@ -41,12 +45,18 @@ class MainWindow:
     def mainloop(self):
         self.root.mainloop()
 
+    def increment_counter(self):
+        global activation_counter
+        activation_counter += 1
+        self.counter_label.config(text=f"BUS CYCLES: {activation_counter}")
+
     def reset_buses(self):
         self.data_bus.reset()
         self.address_bus.reset()
         self.shared_bus.reset()
         self.ram_to_address_bus.reset()
         self.ram_to_data_bus.reset()
+        self.activation_counter = 0
 
         for cpu_index in range(settings.CPU_COUNT):
             self.cache_to_address_buses[cpu_index].reset()
