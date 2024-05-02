@@ -10,6 +10,7 @@ from .ram_grid import RAMGrid
 
 activation_counter = 0
 
+
 class MainWindow:
     def __init__(self):
         self.root = tk.Tk()
@@ -67,6 +68,10 @@ class MainWindow:
             self.cpu_to_cache_write_buses[cpu_index].reset()
 
     def reset(self):
+        global activation_counter
+        activation_counter = 0
+        self.counter_label.config(text=f"BUS CYCLES: {activation_counter}")
+
         self.reset_buses()
         self.ram_grid.reset()
 
