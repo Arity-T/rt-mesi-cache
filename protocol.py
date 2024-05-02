@@ -85,24 +85,34 @@ class CacheController:
                 cach_line.state = "S"
 
     def _get_data_from_m_or_t(self, address: int):
+        list = []
+        cach_line_returned = []
         """Ищет кэш строку с заданным адресом в состоянии M или T и возвращает лежащие
         в ней данные. Меняет состояние на S."""
-        for cpu in self.cpus:
+        for i in range(len(self.cpus)):
+            cpu = self.cpus[i]
             cach_line = cpu.cache.get_cache_line_by_address(address)
             if cach_line is not None and cach_line.state in {"M", "T"}:
                 self.intervention_callback(cpu.index)
                 cach_line.state = "S"
-                return cach_line.data
+                list.append(i)
+                cach_line_returned.append(cach_line)
+        return [cach_line_returned, list]
 
     def _get_data_from_e_or_r(self, address: int):
+        list = []
+        cach_line_returned = []
         """Ищет кэш строку с заданным адресом в состоянии E или R и возвращает лежащие
         в ней данные. Меняет состояние на S."""
-        for cpu in self.cpus:
+        for i in range(len(self.cpus)):
+            cpu = self.cpus[i]
             cach_line = cpu.cache.get_cache_line_by_address(address)
             if cach_line is not None and cach_line.state in {"E", "R"}:
                 self.intervention_callback(cpu.index)
                 cach_line.state = "S"
-                return cach_line.data
+                list.append(i)
+                cach_line_returned.append(cach_line)
+        return [cach_line_returned, list]
 
     def _make_address_invalid(self, address: int):
         """Ищет адрес во всех кэшах и устанавливает в состояниe I."""
@@ -113,14 +123,14 @@ class CacheController:
 
     def read(self, source_cpu: CPU, address: int) -> int:
         """Обрабатывает запрос процессора на чтение данных по указанному адресу."""
+        b = True
 
         # READ HIT - данные есть в кэше процессора, состояния никак не меняются
         cache_line = source_cpu.cache.get_cache_line_by_address(address)
         if cache_line is not None:
-            return source_cpu.cache.read(address)
+            return [source_cpu.cache.read(address), False]
 
         # READ MISS
-        self.read_miss_callback(source_cpu.index)
         address_states = self._get_address_states(address)
         if not address_states:
             # Данных нет в других кэшах, а значит они не являются разделяемыми
@@ -134,16 +144,18 @@ class CacheController:
             state = "T"
 
             # Dirty Intervention
-            self.state_callback(source_cpu.index)
-            data = self._get_data_from_m_or_t(address)
+            list = self._get_data_from_m_or_t(address)
+            self.state_callback(source_cpu.index,list[1])
+            data = list[0][0].data
 
         elif "E" in address_states or "R" in address_states:
             # Данные есть в других кэшах
             state = "R"
 
             # Shared Intervention
-            self.state_callback(source_cpu.index)
-            data = self._get_data_from_e_or_r(address)
+            list = self._get_data_from_e_or_r(address)
+            self.state_callback(source_cpu.index,list[1])
+            data = list[0][0].data
 
         elif "S" in address_states:
             # Данные есть в других кэшах только в состоянии S
@@ -151,6 +163,8 @@ class CacheController:
 
             # Берём данные из оперативной памяти
             data = self.ram.read(address)
+
+        self.read_miss_callback(source_cpu.index,b)
 
         # Записываем в кэш процессора
         replaced_cache_line = source_cpu.cache.write(state, data, address)
@@ -160,7 +174,7 @@ class CacheController:
             self.ram.write(replaced_cache_line.data, replaced_cache_line.address)
 
         # Возвращаем запрашиваемые данные процессору
-        return data
+        return [data, True]
 
     def write(self, source_cpu: CPU, data, address: int):
         """Обрабатывает запрос процессора на запись данных по указанному адресу."""
@@ -173,9 +187,8 @@ class CacheController:
                 source_cpu.cache.write("M", data, address)
 
             elif cach_line.state in {"T", "R", "S"}:
-                self.state_callback(source_cpu.index)
                 self._make_address_invalid(address)
-
+                self.read_miss_callback(source_cpu.index, 0)
                 source_cpu.cache.write("M", data, address)
 
             return
@@ -202,16 +215,21 @@ class CPU:
         self.cache_controller: CacheController = None
         self.cache: Cache = None
 
-    def read(self, address: int) -> int:
-        self.read_callback()
-        return self.cache_controller.read(self, address)
+    def read(self, address: int, from_increment: bool = False) -> int:
+        algoritm = self.cache_controller.read(self, address)
+        if from_increment:
+            self.read_callback(-1)
+        else:
+            self.read_callback(algoritm[1])
+        return algoritm[0]
 
     def write(self, data, address: int):
-        self.write_callback()
+        #self.write_callback()
         self.cache_controller.write(self, data, address)
 
     def increment(self, address):
-        data = self.read(address)
+        self.write_callback()
+        data = self.read(address, from_increment=True)
         data = data + 1
         self.write(data, address)
 
@@ -278,8 +296,7 @@ class Cache:
         """
         line_index = address % self.lines_count
 
-        for channel in self.channels:
-            cache_line = channel[line_index]
+        for cache_line in self.channels[line_index]:
 
             if (
                 cache_line.data is None
@@ -295,8 +312,7 @@ class Cache:
         line_index = address % self.lines_count
         choosen_line = self.channels[0][line_index]
 
-        for channel in self.channels:
-            cache_line = channel[line_index]
+        for cache_line in self.channels[line_index]:
 
             # MRU - выбираем строку, которая использовалась "наиболее недавно"
             if cache_line.not_used_counter < choosen_line.not_used_counter:
@@ -307,7 +323,6 @@ class Cache:
     def read(self, address: int) -> int:
         """Обрабатывае запрос на чтение адреса из кэша. Подразумевается, что при вызове
         этой функции точно известно, что данные в кэше есть."""
-        self.read_callback()
 
         self._cache_lines_counter_increment()
         cache_line = self.get_cache_line_by_address(address)
@@ -337,8 +352,7 @@ class Cache:
         в кэше нет или он находится в состоянии I."""
         line_index = address % self.lines_count
 
-        for channel in self.channels:
-            cache_line = channel[line_index]
+        for cache_line in self.channels[line_index]:
 
             if cache_line.state != "I" and address == cache_line.address:
                 return cache_line
